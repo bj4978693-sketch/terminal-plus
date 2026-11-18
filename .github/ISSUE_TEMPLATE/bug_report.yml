@@ -1,0 +1,25 @@
+name: Bug report
+description: Something does not work
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: shell
+    attributes:
+      label: Shell
+      placeholder: PowerShell 7, Windows PowerShell, cmd, Git Bash, WSL, SSH…
+  - type: input
+    id: version
+    attributes:
+      label: Terminal Plus version and Windows version
+      placeholder: 1.0.0 on Windows 11 24H2
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or extra details

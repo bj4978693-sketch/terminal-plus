@@ -1,0 +1,53 @@
+{
+  "name": "terminal-plus",
+  "version": "1.0.0",
+  "description": "Terminal Plus - a Windows-style terminal with tabs, split panes, command palette and snippets",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "icon": "node gen-icon.js",
+    "dist": "electron-builder --win portable --publish never"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@lydell/node-pty": "^1.2.0-beta.18",
+    "@xterm/addon-clipboard": "^0.2.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-search": "^0.16.0",
+    "@xterm/addon-serialize": "^0.14.0",
+    "@xterm/addon-unicode11": "^0.9.0",
+    "@xterm/addon-web-links": "^0.12.0",
+    "@xterm/addon-webgl": "^0.19.0",
+    "@xterm/xterm": "^6.0.0"
+  },
+  "devDependencies": {
+    "electron": "^45.3.3",
+    "electron-builder": "^26.18.0"
+  },
+  "author": "Terminal Plus",
+  "build": {
+    "appId": "com.terminalplus.app",
+    "productName": "Terminal Plus",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**",
+      "assets/**",
+      "node_modules/**",
+      "!screenshot.png"
+    ],
+    "asarUnpack": [
+      "node_modules/@lydell/**"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "assets/icon.png"
+    },
+    "portable": {
+      "artifactName": "TerminalPlus.exe"
+    }
+  }
+}

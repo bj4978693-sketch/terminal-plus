@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:">
+  <title>Terminal Plus</title>
+  <link rel="stylesheet" href="../node_modules/@xterm/xterm/css/xterm.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="titlebar">
+    <div class="logo" data-icon="logo"></div>
+    <div class="tabs-host"><div id="tabs" role="tablist"></div></div>
+    <div class="tab-actions">
+      <button id="newTabBtn" class="tbtn" title="New tab (Ctrl+Shift+T)" data-icon="plus"></button>
+      <button id="profileBtn" class="tbtn" title="Choose shell" data-icon="chevron"></button>
+    </div>
+    <div class="drag"></div>
+    <div class="tools">
+      <button id="pinBtn" class="tbtn" title="Always on top" data-icon="pin"></button>
+      <button id="paletteBtn" class="tbtn" title="Command palette (Ctrl+Shift+P)" data-icon="palette"></button>
+      <button id="sideBtn" class="tbtn" title="Snippets, history and SSH (Ctrl+Shift+S)" data-icon="snippet"></button>
+      <button id="settingsBtn" class="tbtn" title="Settings (Ctrl+,)" data-icon="settings"></button>
+    </div>
+    <div class="caption">
+      <button id="minBtn" title="Minimize" data-icon="min"></button>
+      <button id="maxBtn" title="Maximize" data-icon="max"></button>
+      <button id="closeBtn" class="close" title="Close" data-icon="close"></button>
+    </div>
+  </header>
+
+  <main id="main">
+    <aside id="vtabs" hidden></aside>
+    <section id="workspace"></section>
+    <aside id="side" hidden>
+      <div class="panel-head">
+        <div class="seg" id="sideTabs">
+          <button data-side="snips"><span data-icon="snippet"></span>Snippets</button>
+          <button data-side="hist"><span data-icon="history"></span>History</button>
+          <button data-side="ssh"><span data-icon="server"></span>SSH</button>
+          <button data-side="ws"><span data-icon="folder"></span>Layouts</button>
+        </div>
+        <button class="tbtn" id="sideClose" data-icon="close" title="Close panel"></button>
+      </div>
+      <div id="sideSnips" class="side-body">
+        <input id="snipFilter" placeholder="Filter snippets">
+        <div id="snipList" class="list"></div>
+        <form id="snipForm" class="addform">
+          <input id="snipName" placeholder="Name" required>
+          <input id="snipCmd" placeholder="Command — use {{name}} for fill-in values" required>
+          <button class="primary">Add snippet</button>
+        </form>
+      </div>
+      <div id="sideHist" class="side-body" hidden>
+        <input id="histFilter" placeholder="Search command history">
+        <div id="histList" class="list"></div>
+        <div class="row-btns"><span class="hint" id="histCount"></span><span class="grow"></span><button id="histClear" class="ghost">Clear history</button></div>
+      </div>
+      <div id="sideSsh" class="side-body" hidden>
+        <div id="sshList" class="list"></div>
+        <form id="sshForm" class="addform">
+          <input id="sshName" placeholder="Name, e.g. Home server" required>
+          <input id="sshDest" placeholder="user@host" required pattern="[A-Za-z0-9_.@:\-\[\]%]+">
+          <div class="pair"><input id="sshPort" placeholder="Port (22)" type="number" min="1" max="65535"><input id="sshKey" placeholder="Key file (optional)"></div>
+          <button class="primary">Save host</button>
+          <p class="hint">Hosts from ~/.ssh/config are added automatically. Uses Windows OpenSSH.</p>
+        </form>
+      </div>
+      <div id="sideWs" class="side-body" hidden>
+        <div id="wsList" class="list"></div>
+        <button id="wsSave" class="primary">Save this window as a layout</button>
+      </div>
+    </aside>
+  </main>
+
+  <footer id="statusbar">
+    <span id="sbProfile"></span>
+    <button id="sbCwd" class="sb-btn" title="Open folder in Explorer"></button>
+    <span id="sbGit" hidden></span>
+    <span id="sbBroadcast" class="warn" hidden><span data-icon="broadcast"></span>Broadcast</span>
+    <span id="sbLock" class="warn" hidden><span data-icon="lock"></span>Read-only</span>
+    <span id="sbRec" class="rec" hidden><i></i>Recording</span>
+    <span id="adminBadge" class="warn" hidden><span data-icon="warn"></span>Administrator</span>
+    <span id="sbZoom" hidden><span data-icon="zoomPane"></span>Zoomed</span>
+    <span class="grow"></span>
+    <span id="sbLast"></span>
+    <span id="sbSize"></span><span>UTF-8</span>
+  </footer>
+
+  <!-- overlays -->
+  <div id="findBar" class="float" hidden>
+    <span data-icon="search"></span><input id="findInput" placeholder="Find">
+    <span id="findCount"></span>
+    <button id="findCase" class="tbtn tog" data-icon="caseIcon" title="Match case"></button>
+    <button id="findWord" class="tbtn tog" data-icon="word" title="Whole word"></button>
+    <button id="findRegex" class="tbtn tog" data-icon="regex" title="Regular expression"></button>
+    <button id="findPrev" class="tbtn" data-icon="up" title="Previous (Shift+Enter)"></button>
+    <button id="findNext" class="tbtn" data-icon="down" title="Next (Enter)"></button>
+    <button id="findClose" class="tbtn" data-icon="close" title="Close (Esc)"></button>
+  </div>
+
+  <div id="palette" class="modal-wrap" hidden>
+    <div class="modal palette">
+      <input id="paletteInput" placeholder="Type a command…">
+      <ul id="paletteList"></ul>
+      <div class="pal-foot" id="paletteFoot"></div>
+    </div>
+  </div>
+
+  <div id="menu" class="menu" hidden></div>
+
+  <div id="settings" class="modal-wrap" hidden>
+    <div class="modal settings">
+      <nav id="setNav"></nav>
+      <div class="set-main">
+        <div id="setBody"></div>
+        <div class="btns"><span class="grow"></span><button id="setCancel">Cancel</button><button id="setSave" class="primary">Save</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="dialog" class="modal-wrap" hidden>
+    <form class="modal dialog" id="dialogForm">
+      <h2 id="dlgTitle"></h2>
+      <div id="dlgBody"></div>
+      <div class="btns"><span class="grow"></span><button type="button" id="dlgCancel">Cancel</button><button id="dlgOk" class="primary">OK</button></div>
+    </form>
+  </div>
+
+  <div id="toast" hidden></div>
+
+  <script src="../node_modules/@xterm/xterm/lib/xterm.js"></script>
+  <script src="../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+  <script src="../node_modules/@xterm/addon-search/lib/addon-search.js"></script>
+  <script src="../node_modules/@xterm/addon-web-links/lib/addon-web-links.js"></script>
+  <script src="../node_modules/@xterm/addon-webgl/lib/addon-webgl.js"></script>
+  <script src="../node_modules/@xterm/addon-unicode11/lib/addon-unicode11.js"></script>
+  <script src="../node_modules/@xterm/addon-serialize/lib/addon-serialize.js"></script>
+  <script src="../node_modules/@xterm/addon-clipboard/lib/addon-clipboard.js"></script>
+  <script src="icons.js"></script>
+  <script src="themes.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>
