@@ -2,7 +2,8 @@
 'use strict';
 const $ = (s) => document.querySelector(s);
 
-let settings, profiles, startCwd, home, elevated = false;
+let settings, profiles, startCwd, home, elevated = false, bundled = [], fontUrl = '';
+const NERD = 'TP Nerd Font'; // bundled JetBrainsMono Nerd Font Mono: icon fallback for every font
 const tabs = [];
 let activeTab = null;
 const panes = new Map(); // ptyId -> pane
@@ -44,9 +45,18 @@ function withAlpha(hex, a) {
   return `rgba(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)}, ${a})`;
 }
 function termTheme() { const t = themeObj(); return { ...t, background: withAlpha(t.background, settings.opacity / 100) }; }
+// Add the bundled Nerd Font as a fallback so prompt icons (Starship, eza --icons) always render.
+function withNerd(f) { return !fontUrl || f.includes(NERD) ? f : f.replace(/,?\s*monospace\s*$/i, '') + `, '${NERD}', monospace`; }
+async function loadNerdFont() {
+  if (!fontUrl) return;
+  const faces = [['Regular', 'normal', 'normal'], ['Bold', 'bold', 'normal'], ['Italic', 'normal', 'italic'], ['BoldItalic', 'bold', 'italic']];
+  await Promise.all(faces.map(async ([f, weight, style]) => {
+    try { document.fonts.add(await new FontFace(NERD, `url("${fontUrl}/JetBrainsMonoNLNerdFontMono-${f}.ttf")`, { weight, style }).load()); } catch { /* font missing: fall back silently */ }
+  }));
+}
 function termOptions() {
   return {
-    fontFamily: settings.fontFamily, fontSize: settings.fontSize, fontWeight: settings.fontWeight, fontWeightBold: 'bold',
+    fontFamily: withNerd(settings.fontFamily), fontSize: settings.fontSize, fontWeight: settings.fontWeight, fontWeightBold: 'bold',
     lineHeight: settings.lineHeight, letterSpacing: settings.letterSpacing,
     cursorStyle: settings.cursorStyle, cursorBlink: settings.cursorBlink, scrollback: settings.scrollback, theme: termTheme(),
     smoothScrollDuration: settings.smoothScroll ? 90 : 0,
@@ -1271,6 +1281,9 @@ const SCHEMA = [
     { k: 'newTabSameDir', label: 'New tabs and splits open in the current folder', type: 'check' },
     { k: 'restoreSession', label: 'Restore tabs, splits and output on next launch', type: 'check' },
     { k: 'shellIntegration', label: 'Shell integration: command marks, folder tracking, history (new panes)', type: 'check' },
+    { k: 'bundledTools', label: 'Built-in tools (rg, fzf, bat, eza, fd, lazygit, delta, jq, dust, zoxide, starship) available in every shell', type: 'check' },
+    { k: 'autoZoxide', label: 'Start zoxide automatically (type z <folder> to jump)', type: 'check' },
+    { k: 'autoStarship', label: 'Use the Starship prompt in PowerShell', type: 'check' },
     { k: 'scrollback', label: 'Scrollback lines', type: 'number', min: 1000, max: 200000, step: 1000 },
     { k: 'copyOnSelect', label: 'Copy text as soon as it is selected', type: 'check' },
     { k: 'rightClick', label: 'Right-click', type: 'select', opts: [['menu', 'Show menu'], ['paste', 'Copy selection / paste (Shift+right-click for menu)']] },
@@ -1557,7 +1570,9 @@ $('#wsSave').onclick = () => saveWorkspace();
 // ---------- Power-ups: install and set up popular open-source terminal tools ----------
 const pu = { bins: null, mods: null };
 const wingetCmd = (ids) => ids.map((id) => `winget install --id ${id} -e --accept-source-agreements --accept-package-agreements`).join('; ');
+const isBundled = (t) => (t.bin && bundled.includes(t.bin)) || (t.font && bundled.length > 0);
 function puInstalled(t) {
+  if (isBundled(t)) return 'bundled';
   if (!pu.bins) return null;
   if (t.bin) return !!pu.bins[t.bin];
   if (t.psModule && !pu.mods) return null; // still checking
@@ -1597,7 +1612,8 @@ async function puSetup(t) {
   return runIn(k, cmd);
 }
 async function starterPack() {
-  const pack = POWERUPS.filter((t) => STARTER_PACK.includes(t.name));
+  const pack = POWERUPS.filter((t) => STARTER_PACK.includes(t.name) && !isBundled(t));
+  if (!pack.length) return toast('Everything in the starter pack is already built into Terminal Plus');
   const ok = await confirmBox('Install the starter pack?', `Installs with winget: ${pack.map((t) => t.name).join(', ')}.\nThen adds Starship and zoxide to your PowerShell profile and switches the font to JetBrains Mono Nerd Font.`, 'Install');
   if (!ok) return;
   const setup = pack.filter((t) => t.setup?.powershell).map((t) => t.setup.powershell).join('; ');
@@ -1625,14 +1641,16 @@ async function renderPowerups(refresh) {
     if (t.cat !== cat) { cat = t.cat; list.append(Object.assign(document.createElement('h4'), { className: 'pu-cat', textContent: cat })); }
     const inst = puInstalled(t);
     const el = div('pu');
-    el.innerHTML = `<div class="pu-top"><b></b>${t.stars ? `<span class="star">★ ${esc(t.stars)}</span>` : ''}<span class="grow"></span>${inst === true ? '<span class="pill ok">Installed</span>' : inst === false ? '<span class="pill">Not installed</span>' : ''}</div><p></p><div class="pu-btns"></div>`;
+    el.innerHTML = `<div class="pu-top"><b></b>${t.stars ? `<span class="star">★ ${esc(t.stars)}</span>` : ''}<span class="grow"></span>${inst === 'bundled' ? '<span class="pill built">Built in</span>' : inst === true ? '<span class="pill ok">Installed</span>' : inst === false ? '<span class="pill">Not installed</span>' : ''}</div><p></p><div class="pu-btns"></div>`;
     el.querySelector('b').textContent = t.name;
     el.querySelector('p').textContent = t.desc + (t.needsFont ? ' Best with a Nerd Font.' : '');
     const btns = el.querySelector('.pu-btns');
     const btn = (label, fn, primary) => { const b = Object.assign(document.createElement('button'), { className: primary ? 'primary sm' : 'ghost sm', textContent: label }); b.onclick = fn; btns.append(b); };
-    if (inst !== true && (t.winget || t.install)) btn('Install', () => puInstall(t), true);
-    if (t.setup) btn(t.setup.any || t.setup[kind] ? 'Set up' : `Set up (${Object.keys(t.setup)[0] === 'powershell' ? 'PowerShell' : Object.keys(t.setup)[0]})`, () => puSetup(t), inst === true);
-    if (t.font) btn('Use this font', () => setSetting({ fontFamily: t.font }).then(() => toast('Font changed — install the font first if text looks wrong')), false);
+    const auto = { Starship: 'autoStarship', zoxide: 'autoZoxide' }[t.name];
+    if (auto && inst === 'bundled') btn(settings[auto] ? `✓ Starts automatically${t.name === 'Starship' ? ' (PowerShell)' : ''}` : 'Start automatically', async () => { await setSetting({ [auto]: !settings[auto] }); toast('Applies to new tabs'); renderPowerups(); }, !settings[auto]);
+    if (inst !== true && inst !== 'bundled' && (t.winget || t.install)) btn('Install', () => puInstall(t), true);
+    if (t.setup && !(auto && inst === 'bundled')) btn(t.setup.any || t.setup[kind] ? 'Set up' : `Set up (${Object.keys(t.setup)[0] === 'powershell' ? 'PowerShell' : Object.keys(t.setup)[0]})`, () => puSetup(t), inst === true);
+    if (t.font) btn('Use this font', () => setSetting({ fontFamily: inst === 'bundled' ? `'${NERD}', monospace` : t.font }).then(() => toast('Font changed')), false);
     if (t.try) btn('Try it', () => insertCmd(t.try, false));
     btn('GitHub', () => tp.openUrl('https://github.com/' + t.repo));
     list.append(el);
@@ -1817,12 +1835,14 @@ window.addEventListener('resize', () => activeTab?.panes.forEach(fitPane));
 (async () => {
   hydrateIcons();
   let startProfile, admin;
-  ({ settings, profiles, startCwd, home, startProfile, admin, elevated } = await tp.settings.get());
+  ({ settings, profiles, startCwd, home, startProfile, admin, elevated, bundled, fontUrl } = await tp.settings.get());
+  bundled = settings.bundledTools ? bundled || [] : [];
   if (!profiles.length) { document.body.insertAdjacentHTML('beforeend', '<p style="padding:20px">No shell found.</p>'); return; }
   if (elevated) { document.body.classList.add('admin'); $('#adminBadge').hidden = !admin; if (!admin) toast('Not running as administrator (UAC was declined)'); }
   compileRules();
   applyAll();
   workspaces = await tp.workspaces.get();
+  await loadNerdFont();
   await document.fonts.ready;
   // Admin windows and windows opened for a folder/profile start fresh; normal launches restore the last session.
   const sess = settings.restoreSession && !startCwd && !startProfile && !elevated ? await tp.session.load() : null;

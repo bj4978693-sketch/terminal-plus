@@ -41,7 +41,7 @@ The window you get when you open Command Prompt or PowerShell has one shell, no 
 | Copy text with the mouse | Quick select: type a letter to copy any URL, path or IP on screen |
 | Paste runs straight away | Multi-line paste shows you what will run first |
 | Fixed look | 11 color schemes, transparency, fonts, vertical tabs, follows Windows light/dark |
-| Install tools yourself | **Tools panel**: one click installs and sets up 30 popular open-source tools (Starship, zoxide, fzf, lazygit, ripgrep, bat…) |
+| Install tools yourself | **11 top tools built in**, ready in every shell with nothing to install: Starship, zoxide, fzf, ripgrep, bat, eza, fd, lazygit, delta, jq, dust — plus the Nerd Font for icons |
 | Find it in the Start menu | Hotkey drops it down from the top of the screen from any app |
 
 ### Better than Windows Terminal
@@ -73,9 +73,10 @@ Windows Terminal is great, but many of its most-upvoted requests on GitHub are s
 - **Paste guard** that shows what you're about to paste before multi-line text runs.
 - Every shortcut can be remapped in a click-and-press editor, with clashes shown in red.
 
-- **Tools panel:** install and set up Starship, Oh My Posh, zoxide, fzf, lazygit, ripgrep, bat, eza, Nerd Fonts and more in one click, with "Installed" status for each.
+- **Built-in tools:** 11 of the most-starred terminal tools on GitHub ship inside the exe and work in PowerShell, cmd and Git Bash right away. Starship gives PowerShell a beautiful prompt and `z` jumps to any folder you've visited — both start automatically (turn off in Settings).
+- **Tools panel:** 19 more (Oh My Posh, Clink, PSFzf, posh-git, Terminal-Icons, Neovim, GitHub CLI…) install and set up in one click.
 
-> **Good to know:** one portable exe (about 100 MB), no install. Not code-signed yet, so Windows may ask "Run anyway?" the first time.
+> **Good to know:** one portable exe (about 120 MB with all the built-in tools), no install. Not code-signed yet, so Windows may ask "Run anyway?" the first time.
 
 ## Download
 
@@ -91,6 +92,7 @@ Needs Node.js 20+ on Windows.
 ```
 npm install
 npm start          # run
+npm run fetch-tools   # download the built-in tools and font into vendor/
 npm run dist       # build dist/TerminalPlus.exe
 ```
 
@@ -163,6 +165,25 @@ Press **F1** for every shortcut, **Ctrl+Shift+P** for every command.
 Data lives in `%APPDATA%\terminal-plus` (`settings.json`, `history.json`, `session.json`).
 
 Self-check: `TP_SHOT=out.png [TP_SHOT_JS=code] [TP_LOG=log.txt] npm start` launches, runs code, saves a screenshot and quits.
+
+## Built-in tools
+
+| Tool | What it does | Try |
+|---|---|---|
+| [Starship](https://github.com/starship/starship) ★61k | Fast, informative prompt (PowerShell, on by default) | just open a tab |
+| [zoxide](https://github.com/ajeetdsouza/zoxide) ★41k | Jump to folders you've visited | `z proj` |
+| [fzf](https://github.com/junegunn/fzf) ★84k | Fuzzy finder | `fzf` |
+| [ripgrep](https://github.com/BurntSushi/ripgrep) ★70k | Very fast text search | `rg "TODO"` |
+| [bat](https://github.com/sharkdp/bat) ★61k | `cat` with syntax colors | `bat file.js` |
+| [eza](https://github.com/eza-community/eza) ★24k | Modern `ls` with icons and git status | `eza -la --icons` |
+| [fd](https://github.com/sharkdp/fd) ★45k | Fast file finder | `fd name` |
+| [lazygit](https://github.com/jesseduffield/lazygit) ★84k | Git in a friendly terminal UI | `lazygit` |
+| [delta](https://github.com/dandavison/delta) ★33k | Readable git diffs | `git diff \| delta` |
+| [jq](https://github.com/jqlang/jq) ★36k | Work with JSON | `jq . file.json` |
+| [dust](https://github.com/bootandy/dust) ★13k | What's using disk space | `dust` |
+| [JetBrains Mono Nerd Font](https://github.com/ryanoasis/nerd-fonts) ★65k | Icons for prompts and listings | automatic |
+
+Versions are pinned in [`scripts/fetch-tools.js`](scripts/fetch-tools.js). Tools you install yourself take priority. Each tool keeps its own license (MIT, Apache-2.0, Unlicense or OFL); copies ship in `resources/vendor/licenses`.
 
 ## License
 

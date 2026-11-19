@@ -36,6 +36,9 @@ const DEFAULTS = {
   explorerMenu: false,
   alwaysOnTop: false,
   shellIntegration: true,
+  bundledTools: true,
+  autoZoxide: true,
+  autoStarship: true,
   // v3
   themeMode: 'fixed', themeLight: 'daylight', themeDark: 'carbon',
   accent: '',
@@ -86,6 +89,13 @@ let profiles = [];
 const PS_INTEGRATION = String.raw`
 if (-not $global:__tpOn) {
   $global:__tpOn = $true
+  # Built-in tools: zoxide (z) and Starship prompt, unless the user's profile already set them up.
+  if ($env:TP_ZOXIDE -eq '1' -and -not (Get-Command z -ErrorAction SilentlyContinue) -and (Get-Command zoxide -ErrorAction SilentlyContinue)) {
+    Invoke-Expression (& { (zoxide init powershell | Out-String) })
+  }
+  if ($env:TP_STARSHIP -eq '1' -and -not $env:STARSHIP_SHELL -and (Get-Command starship -ErrorAction SilentlyContinue)) {
+    Invoke-Expression (& starship init powershell)
+  }
   $global:__tpPrompt = $function:prompt
   $global:__tpFirst = $true
   function global:prompt {
@@ -110,6 +120,8 @@ const psEncoded = Buffer.from(PS_INTEGRATION, 'utf16le').toString('base64');
 // Bash: PROMPT_COMMAND reports the exit code and the folder (as a Windows path) before each prompt.
 const BASH_PC = [
   '__tp_s=$?; __tp_p=$PWD;',
+  // first prompt only: start built-in zoxide (its hook keeps $? intact)
+  'if [ -z "$__tp_z" ]; then __tp_z=1; if [ "$TP_ZOXIDE" = 1 ] && ! type z >/dev/null 2>&1 && command -v zoxide >/dev/null; then eval "$(zoxide init bash)"; fi; fi;',
   'if [[ $__tp_p =~ ^/([a-zA-Z])(/.*)?$ ]]; then __tp_p="${BASH_REMATCH[1]^^}:${BASH_REMATCH[2]:-/}"; __tp_b=\'\\\'; __tp_p=${__tp_p//\\//$__tp_b}; fi;',
   "printf '\\e]133;D;%s\\a\\e]9;9;\"%s\"\\a\\e]133;A\\a' \"$__tp_s\" \"$__tp_p\"",
 ].join(' ');
@@ -128,9 +140,16 @@ function freshPath() {
     .join(';').split(';').filter(Boolean);
   return [...new Set(merged.map((p) => p.replace(/\\$/, '')))].join(';');
 }
+// Built-in tools and font shipped inside the app (see scripts/fetch-tools.js).
+const VENDOR = app.isPackaged ? path.join(process.resourcesPath, 'vendor') : path.join(__dirname, 'vendor');
+const VENDOR_BIN = path.join(VENDOR, 'bin');
+const bundledTools = () => { try { return fs.readdirSync(VENDOR_BIN).filter((f) => f.endsWith('.exe')).map((f) => f.slice(0, -4)); } catch { return []; } };
+const toolPath = () => freshPath() + (settings.bundledTools && fs.existsSync(VENDOR_BIN) ? ';' + VENDOR_BIN : ''); // user's own installs win
 function shellLaunch(prof) {
-  const env = { ...process.env, PATH: freshPath(), TERM_PROGRAM: 'TerminalPlus', COLORTERM: 'truecolor' };
+  const env = { ...process.env, PATH: toolPath(), TERM_PROGRAM: 'TerminalPlus', COLORTERM: 'truecolor' };
   delete env.Path; // Windows env names are case-insensitive; keep one
+  if (settings.autoZoxide) env.TP_ZOXIDE = '1';
+  if (settings.autoStarship) env.TP_STARSHIP = '1';
   let args = [...prof.args];
   if (settings.shellIntegration) {
     if (prof.kind === 'powershell') args = [...args, '-NoExit', '-EncodedCommand', psEncoded];
@@ -430,7 +449,7 @@ ipcMain.on('open-admin', () => {
 // Power-ups: which tools are on PATH, which PowerShell modules are installed.
 ipcMain.handle('tools:which', async (_e, names) => {
   if (!Array.isArray(names)) return {};
-  const env = { ...process.env, PATH: freshPath() };
+  const env = { ...process.env, PATH: toolPath() };
   const one = (n) => new Promise((res) => {
     if (!/^[\w.-]+$/.test(n)) return res([n, null]);
     execFile('where.exe', [n], { env, timeout: 4000, windowsHide: true }, (err, out) => res([n, err ? null : String(out).split(/\r?\n/)[0].trim()]));
@@ -456,7 +475,7 @@ ipcMain.handle('ws:set', (_e, name, data) => {
 });
 
 // ---------- IPC: settings / session / history ----------
-ipcMain.handle('settings:get', () => ({ settings, profiles: detectProfiles(), home: os.homedir(), startCwd, startProfile, platform: process.platform, admin: isAdmin, elevated: elevatedRun }));
+ipcMain.handle('settings:get', () => ({ settings, profiles: detectProfiles(), home: os.homedir(), startCwd, startProfile, platform: process.platform, admin: isAdmin, elevated: elevatedRun, bundled: bundledTools(), fontUrl: require('url').pathToFileURL(path.join(VENDOR, 'fonts')).href }));
 ipcMain.handle('settings:export', async () => {
   const { bounds, ...rest } = settings;
   const r = await dialog.showSaveDialog(win, { defaultPath: 'terminal-plus-settings.json', filters: [{ name: 'JSON', extensions: ['json'] }] });

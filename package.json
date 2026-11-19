@@ -6,7 +6,8 @@
   "scripts": {
     "start": "electron .",
     "icon": "node gen-icon.js",
-    "dist": "electron-builder --win portable --publish never"
+    "dist": "electron-builder --win portable --publish never",
+    "fetch-tools": "node scripts/fetch-tools.js"
   },
   "license": "MIT",
   "dependencies": {
@@ -59,6 +60,15 @@
     "electronLanguages": [
       "en-US"
     ],
-    "compression": "maximum"
+    "compression": "maximum",
+    "extraResources": [
+      {
+        "from": "vendor",
+        "to": "vendor",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
   }
 }
