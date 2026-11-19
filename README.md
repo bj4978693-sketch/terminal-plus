@@ -25,6 +25,37 @@
 
 </div>
 
+## Why Terminal Plus?
+
+Windows Terminal is great, but many of its most-upvoted requests on GitHub are still open. Terminal Plus was built from that list, plus requests from WezTerm, Tabby, Ghostty, Kitty and Warp users.
+
+| You want… | Windows Terminal | Terminal Plus |
+|---|---|---|
+| Resize split panes by dragging with the mouse | Requested ([#992](https://github.com/microsoft/terminal/issues/992)) | ✅ Drag the divider, double-click to reset |
+| Drag a tab onto a pane to make a split | Requested ([#4587](https://github.com/microsoft/terminal/issues/4587)) | ✅ |
+| A notification when a long command finishes | Requested ([#6372](https://github.com/microsoft/terminal/issues/6372)) | ✅ With exit code and run time |
+| See when each command ran | Requested ([#9331](https://github.com/microsoft/terminal/issues/9331)) | ✅ Time, ✓ / ✗ exit code and duration on every command |
+| A status bar | Requested ([#3459](https://github.com/microsoft/terminal/issues/3459)) | ✅ Shell, folder (click to open), git branch, last result |
+| Highlight errors and warnings in output | Requested ([#6297](https://github.com/microsoft/terminal/issues/6297)) | ✅ Built-in rules plus your own regex |
+| Tabs down the side | Requested ([#835](https://github.com/microsoft/terminal/issues/835)) | ✅ Vertical tabs |
+| Activity alert for background tabs | Requested ([#7955](https://github.com/microsoft/terminal/issues/7955)) | ✅ Dot on the tab, pulsing icon while running |
+| Record a session | Requested ([#469](https://github.com/microsoft/terminal/issues/469)) | ✅ Save as asciinema `.cast` |
+| Quake mode that remembers its size | Requested ([#12594](https://github.com/microsoft/terminal/issues/12594)) | ✅ Drop-down height setting, hides on click-away |
+| Choose the pane highlight color | Requested ([#3061](https://github.com/microsoft/terminal/issues/3061)) | ✅ Accent color setting |
+| Ask before closing a pane that is still running something | Requested ([#6549](https://github.com/microsoft/terminal/issues/6549)) | ✅ |
+
+**Also only in Terminal Plus:**
+- **Quick select:** a letter appears on every URL, path, IP address, hash and number on screen. Type it to copy, with no mouse.
+- **Searchable history across all sessions and shells**, with exit codes, folders and times. Delete single entries.
+- **Snippets with fill-in blanks**, e.g. `netstat -ano | findstr :{{port}}` asks for the port.
+- **Saved layouts:** reopen a whole project's tabs, splits and folders in one click.
+- **SSH manager** with hosts from `~/.ssh/config` added automatically.
+- **Copy the last command's output** or **re-run the last command** with one shortcut.
+- **Paste guard** that shows what you're about to paste before multi-line text runs.
+- Every shortcut can be remapped in a click-and-press editor, with clashes shown in red.
+
+**Honest trade-offs:** Terminal Plus is built on Electron, so the exe is bigger (about 112 MB) and uses more memory than Windows Terminal. It is not code-signed yet, so SmartScreen warns on first run. It can't show images inside the terminal, scroll horizontally, or use font ligatures, because of Windows ConPTY and xterm.js limits.
+
 ## Download
 
 Get `TerminalPlus.exe` from the [Releases](../../releases) page. It is portable: no install, just run it.
