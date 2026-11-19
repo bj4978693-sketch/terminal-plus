@@ -114,8 +114,23 @@ const BASH_PC = [
   "printf '\\e]133;D;%s\\a\\e]9;9;\"%s\"\\a\\e]133;A\\a' \"$__tp_s\" \"$__tp_p\"",
 ].join(' ');
 
+// PATH as Windows has it now (registry), so tools installed after Terminal Plus started work in new tabs.
+function freshPath() {
+  if (process.platform !== 'win32') return process.env.PATH;
+  const read = (key) => {
+    try {
+      const out = execFileSync('reg.exe', ['query', key, '/v', 'Path'], { encoding: 'utf8', timeout: 2000, windowsHide: true });
+      const m = out.match(/Path\s+REG_(?:EXPAND_)?SZ\s+(.*)/i);
+      return m ? m[1].trim().replace(/%([^%]+)%/g, (s, v) => process.env[v] ?? s) : '';
+    } catch { return ''; }
+  };
+  const merged = [read('HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'), read('HKCU\\Environment'), process.env.PATH || '']
+    .join(';').split(';').filter(Boolean);
+  return [...new Set(merged.map((p) => p.replace(/\\$/, '')))].join(';');
+}
 function shellLaunch(prof) {
-  const env = { ...process.env, TERM_PROGRAM: 'TerminalPlus', COLORTERM: 'truecolor' };
+  const env = { ...process.env, PATH: freshPath(), TERM_PROGRAM: 'TerminalPlus', COLORTERM: 'truecolor' };
+  delete env.Path; // Windows env names are case-insensitive; keep one
   let args = [...prof.args];
   if (settings.shellIntegration) {
     if (prof.kind === 'powershell') args = [...args, '-NoExit', '-EncodedCommand', psEncoded];
@@ -412,6 +427,24 @@ ipcMain.on('open-admin', () => {
   const argList = [...pre.map((a) => `"${a}"`), '--elevated'].map(q).join(',');
   execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `Start-Process -FilePath ${q(exe)} -ArgumentList ${argList} -Verb RunAs`], { windowsHide: true });
 });
+// Power-ups: which tools are on PATH, which PowerShell modules are installed.
+ipcMain.handle('tools:which', async (_e, names) => {
+  if (!Array.isArray(names)) return {};
+  const env = { ...process.env, PATH: freshPath() };
+  const one = (n) => new Promise((res) => {
+    if (!/^[\w.-]+$/.test(n)) return res([n, null]);
+    execFile('where.exe', [n], { env, timeout: 4000, windowsHide: true }, (err, out) => res([n, err ? null : String(out).split(/\r?\n/)[0].trim()]));
+  });
+  return Object.fromEntries(await Promise.all(names.slice(0, 80).map(one)));
+});
+ipcMain.handle('tools:psmodules', () => new Promise((res) => {
+  execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', 'Get-Module -ListAvailable | ForEach-Object { $_.Name + " " + $_.Version }'],
+    { timeout: 15000, windowsHide: true, maxBuffer: 4 << 20 }, (err, out) => {
+      const mods = {};
+      for (const l of String(out || '').split(/\r?\n/)) { const [n, v] = l.trim().split(' '); if (n && (!mods[n] || v > mods[n])) mods[n] = v; }
+      res(mods);
+    });
+}));
 const loadWs = () => readJson(USER('workspaces.json'), {});
 ipcMain.handle('ws:get', () => loadWs());
 ipcMain.handle('ws:set', (_e, name, data) => {

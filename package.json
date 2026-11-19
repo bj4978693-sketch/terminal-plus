@@ -35,9 +35,16 @@
       "main.js",
       "preload.js",
       "src/**",
-      "assets/**",
+      "assets/icon.png",
       "node_modules/**",
-      "!screenshot.png"
+      "!**/*.map",
+      "!**/*.mjs",
+      "!**/*.d.ts",
+      "!**/*.pdb",
+      "!**/*.ts",
+      "!**/{README,CHANGELOG,HISTORY}*",
+      "!**/{test,tests,__tests__,typings}/**",
+      "!node_modules/**/{docs,doc,example,examples}/**"
     ],
     "asarUnpack": [
       "node_modules/@lydell/**"
@@ -48,6 +55,10 @@
     },
     "portable": {
       "artifactName": "TerminalPlus.exe"
-    }
+    },
+    "electronLanguages": [
+      "en-US"
+    ],
+    "compression": "maximum"
   }
 }

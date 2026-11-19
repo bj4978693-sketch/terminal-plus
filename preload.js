@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('tp', {
   saveText: (name, text) => ipcRenderer.invoke('save-text', name, text),
   desktopShortcut: (id) => ipcRenderer.invoke('desktop-shortcut', id),
   pathForFile: (f) => webUtils.getPathForFile(f),
+  tools: { which: (n) => ipcRenderer.invoke('tools:which', n), psModules: () => ipcRenderer.invoke('tools:psmodules') },
   notify: (t, b) => ipcRenderer.send('notify', t, b),
   clip: { read: () => ipcRenderer.invoke('clip:read'), write: (t) => ipcRenderer.send('clip:write', t) },
   settings: {

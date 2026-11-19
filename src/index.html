@@ -39,6 +39,7 @@
           <button data-side="hist"><span data-icon="history"></span>History</button>
           <button data-side="ssh"><span data-icon="server"></span>SSH</button>
           <button data-side="ws"><span data-icon="folder"></span>Layouts</button>
+          <button data-side="pu"><span data-icon="sparkle"></span>Tools</button>
         </div>
         <button class="tbtn" id="sideClose" data-icon="close" title="Close panel"></button>
       </div>
@@ -65,6 +66,15 @@
           <button class="primary">Save host</button>
           <p class="hint">Hosts from ~/.ssh/config are added automatically. Uses Windows OpenSSH.</p>
         </form>
+      </div>
+      <div id="sidePu" class="side-body" hidden>
+        <div class="pu-head">
+          <button id="puStarter" class="primary">Install starter pack</button>
+          <button id="puRefresh" class="tbtn" data-icon="history" title="Check again"></button>
+        </div>
+        <input id="puFilter" placeholder="Filter tools">
+        <div id="puList" class="list"></div>
+        <p class="hint">Popular open-source tools, installed with winget. Prompt tools need PowerShell to load your profile: <button id="puPolicy" class="linkbtn">allow it</button>.</p>
       </div>
       <div id="sideWs" class="side-body" hidden>
         <div id="wsList" class="list"></div>
@@ -139,6 +149,7 @@
   <script src="../node_modules/@xterm/addon-clipboard/lib/addon-clipboard.js"></script>
   <script src="icons.js"></script>
   <script src="themes.js"></script>
+  <script src="powerups.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

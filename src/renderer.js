@@ -1142,6 +1142,7 @@ const ACTIONS = [
   { id: 'sshPanel', cat: 'App', icon: 'server', name: 'SSH hosts panel', run: () => toggleSide(true, 'ssh') },
   { id: 'wsPanel', cat: 'App', icon: 'folder', name: 'Saved layouts panel', run: () => toggleSide(true, 'ws') },
   { id: 'wsSave', cat: 'App', icon: 'export', name: 'Save this window as a layout…', run: () => saveWorkspace() },
+  { id: 'tools', cat: 'App', icon: 'sparkle', name: 'Tools: install Starship, zoxide, fzf, lazygit…', key: 'ctrl+shift+u', run: () => toggleSide(true, 'pu') },
 ];
 const PRETTY = { ctrl: 'Ctrl', alt: 'Alt', shift: 'Shift', up: '↑', down: '↓', left: '←', right: '→', space: 'Space', enter: 'Enter', tab: 'Tab', escape: 'Esc', home: 'Home', end: 'End', pageup: 'PgUp', pagedown: 'PgDn', delete: 'Del', insert: 'Ins' };
 const prettyKey = (k) => (k || '').split('|').filter(Boolean).map((c) => c.split('+').map((x) => PRETTY[x] || x.toUpperCase()).join('+')).join(' or ');
@@ -1510,6 +1511,8 @@ function switchSide(w) {
   $('#sideHist').hidden = w !== 'hist';
   $('#sideSsh').hidden = w !== 'ssh';
   $('#sideWs').hidden = w !== 'ws';
+  $('#sidePu').hidden = w !== 'pu';
+  if (w === 'pu') renderPowerups();
   document.querySelectorAll('#sideTabs button').forEach((b) => b.classList.toggle('on', b.dataset.side === w));
   if (w === 'snips') renderSnips();
   if (w === 'hist') tp.history.get().then((h) => { history = h; renderHistory(); });
@@ -1550,6 +1553,100 @@ function renderWs() {
   if (!list.children.length) list.innerHTML = '<p class="hint">Save the tabs, splits and folders you use for a project, then reopen them in one click.</p>';
 }
 $('#wsSave').onclick = () => saveWorkspace();
+
+// ---------- Power-ups: install and set up popular open-source terminal tools ----------
+const pu = { bins: null, mods: null };
+const wingetCmd = (ids) => ids.map((id) => `winget install --id ${id} -e --accept-source-agreements --accept-package-agreements`).join('; ');
+function puInstalled(t) {
+  if (!pu.bins) return null;
+  if (t.bin) return !!pu.bins[t.bin];
+  if (t.psModule && !pu.mods) return null; // still checking
+  if (t.psModule === 'PSReadLine') return (pu.mods.PSReadLine || '0') >= '2.2';
+  if (t.psModule) return !!pu.mods[t.psModule];
+  return null; // fonts: can't tell cheaply
+}
+// Wait until a new pane's shell has shown its first prompt (or give up after a few seconds).
+function paneReady(p) {
+  return new Promise((res) => {
+    const t0 = Date.now();
+    const tick = () => (p.id && (p.prompts.length || Date.now() - t0 > 6000) ? setTimeout(res, 150) : Date.now() - t0 > 12000 ? res() : setTimeout(tick, 150));
+    tick();
+  });
+}
+// Run a command in a shell of the right kind: the current pane if it matches, else a new tab.
+async function runIn(kind, cmd) {
+  let p = activePane();
+  if (kind !== 'any' && p?.profile.kind !== kind) {
+    const prof = profiles.find((x) => x.kind === kind && x.id === 'pwsh') || profiles.find((x) => x.kind === kind);
+    if (!prof) return toast(`No ${kind} shell found on this PC`);
+    createTab(prof.id);
+    p = activePane();
+    await paneReady(p);
+  }
+  insertCmd(cmd, true);
+}
+async function puInstall(t) {
+  if (t.install) return runIn('powershell', t.install);
+  return runIn('powershell', wingetCmd([t.winget]));
+}
+async function puSetup(t) {
+  const kind = activePane()?.profile.kind;
+  if (t.setup.any) return runIn('any', t.setup.any);
+  if (t.setup[kind]) return runIn(kind, t.setup[kind]);
+  const [k, cmd] = Object.entries(t.setup)[0];
+  return runIn(k, cmd);
+}
+async function starterPack() {
+  const pack = POWERUPS.filter((t) => STARTER_PACK.includes(t.name));
+  const ok = await confirmBox('Install the starter pack?', `Installs with winget: ${pack.map((t) => t.name).join(', ')}.\nThen adds Starship and zoxide to your PowerShell profile and switches the font to JetBrains Mono Nerd Font.`, 'Install');
+  if (!ok) return;
+  const setup = pack.filter((t) => t.setup?.powershell).map((t) => t.setup.powershell).join('; ');
+  await runIn('powershell', `${wingetCmd(pack.filter((t) => t.winget).map((t) => t.winget))}; $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User'); ${setup}`);
+  await setSetting({ fontFamily: POWERUPS.find((t) => t.font).font });
+  toast('Installing… new tabs will pick up the new tools');
+}
+async function renderPowerups(refresh) {
+  const list = $('#puList');
+  const q = $('#puFilter').value;
+  if (refresh || !pu.bins) {
+    list.innerHTML = '<p class="hint">Checking what is installed…</p>';
+    pu.mods = null;
+    // PowerShell module listing is slow: show tool status first, fill in modules when ready.
+    tp.tools.psModules().then((m) => { pu.mods = m; if (!$('#sidePu').hidden) renderPowerups(); });
+    pu.bins = await tp.tools.which([...new Set(POWERUPS.filter((t) => t.bin).map((t) => t.bin))]);
+  }
+  const keep = refresh ? 0 : list.scrollTop;
+  requestAnimationFrame(() => (list.scrollTop = keep));
+  list.innerHTML = '';
+  const kind = activePane()?.profile.kind;
+  let cat = '';
+  for (const t of POWERUPS) {
+    if (q && !fuzzy(q, `${t.name} ${t.desc} ${t.cat}`)) continue;
+    if (t.cat !== cat) { cat = t.cat; list.append(Object.assign(document.createElement('h4'), { className: 'pu-cat', textContent: cat })); }
+    const inst = puInstalled(t);
+    const el = div('pu');
+    el.innerHTML = `<div class="pu-top"><b></b>${t.stars ? `<span class="star">★ ${esc(t.stars)}</span>` : ''}<span class="grow"></span>${inst === true ? '<span class="pill ok">Installed</span>' : inst === false ? '<span class="pill">Not installed</span>' : ''}</div><p></p><div class="pu-btns"></div>`;
+    el.querySelector('b').textContent = t.name;
+    el.querySelector('p').textContent = t.desc + (t.needsFont ? ' Best with a Nerd Font.' : '');
+    const btns = el.querySelector('.pu-btns');
+    const btn = (label, fn, primary) => { const b = Object.assign(document.createElement('button'), { className: primary ? 'primary sm' : 'ghost sm', textContent: label }); b.onclick = fn; btns.append(b); };
+    if (inst !== true && (t.winget || t.install)) btn('Install', () => puInstall(t), true);
+    if (t.setup) btn(t.setup.any || t.setup[kind] ? 'Set up' : `Set up (${Object.keys(t.setup)[0] === 'powershell' ? 'PowerShell' : Object.keys(t.setup)[0]})`, () => puSetup(t), inst === true);
+    if (t.font) btn('Use this font', () => setSetting({ fontFamily: t.font }).then(() => toast('Font changed — install the font first if text looks wrong')), false);
+    if (t.try) btn('Try it', () => insertCmd(t.try, false));
+    btn('GitHub', () => tp.openUrl('https://github.com/' + t.repo));
+    list.append(el);
+  }
+  if (!list.children.length) list.innerHTML = '<p class="hint">No matches.</p>';
+}
+$('#puFilter').addEventListener('input', () => renderPowerups());
+$('#puRefresh').onclick = () => renderPowerups(true);
+$('#puStarter').onclick = starterPack;
+$('#puPolicy').onclick = async () => {
+  if (await confirmBox('Let PowerShell run your profile?', 'Prompt tools (Starship, Oh My Posh, zoxide…) load from your PowerShell profile, which Windows blocks by default.\nThis runs: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned\nIt only affects your user account: local scripts may run, downloaded scripts must be signed.', 'Allow')) {
+    runIn('powershell', 'Set-ExecutionPolicy -Scope CurrentUser RemoteSigned -Force');
+  }
+};
 $('#sideTabs').onclick = (e) => { const b = e.target.closest('button'); if (b) switchSide(b.dataset.side); };
 $('#sideClose').onclick = () => toggleSide(false);
 

@@ -27,6 +27,25 @@
 
 ## Why Terminal Plus?
 
+### Better than the normal Windows terminal
+
+The window you get when you open Command Prompt or PowerShell has one shell, no tabs, and forgets everything when you close it. Terminal Plus gives you:
+
+| Normal terminal window | Terminal Plus |
+|---|---|
+| One shell per window | Tabs and split panes, with PowerShell, cmd, Git Bash, WSL and SSH side by side |
+| Close it and everything is gone | Tabs, splits, folders and output come back next time |
+| History only for the current window | Every command saved and searchable across all shells and days |
+| No idea if a command worked | ✓ / ✗ and run time on every command, plus a notification when a long one finishes |
+| Errors look like everything else | Errors red, warnings yellow, successes green |
+| Copy text with the mouse | Quick select: type a letter to copy any URL, path or IP on screen |
+| Paste runs straight away | Multi-line paste shows you what will run first |
+| Fixed look | 11 color schemes, transparency, fonts, vertical tabs, follows Windows light/dark |
+| Install tools yourself | **Tools panel**: one click installs and sets up 30 popular open-source tools (Starship, zoxide, fzf, lazygit, ripgrep, bat…) |
+| Find it in the Start menu | Hotkey drops it down from the top of the screen from any app |
+
+### Better than Windows Terminal
+
 Windows Terminal is great, but many of its most-upvoted requests on GitHub are still open. Terminal Plus was built from that list, plus requests from WezTerm, Tabby, Ghostty, Kitty and Warp users.
 
 | You want… | Windows Terminal | Terminal Plus |
@@ -54,7 +73,9 @@ Windows Terminal is great, but many of its most-upvoted requests on GitHub are s
 - **Paste guard** that shows what you're about to paste before multi-line text runs.
 - Every shortcut can be remapped in a click-and-press editor, with clashes shown in red.
 
-**Honest trade-offs:** Terminal Plus is built on Electron, so the exe is bigger (about 112 MB) and uses more memory than Windows Terminal. It is not code-signed yet, so SmartScreen warns on first run. It can't show images inside the terminal, scroll horizontally, or use font ligatures, because of Windows ConPTY and xterm.js limits.
+- **Tools panel:** install and set up Starship, Oh My Posh, zoxide, fzf, lazygit, ripgrep, bat, eza, Nerd Fonts and more in one click, with "Installed" status for each.
+
+> **Good to know:** one portable exe (about 100 MB), no install. Not code-signed yet, so Windows may ask "Run anyway?" the first time.
 
 ## Download
 
@@ -126,8 +147,9 @@ Every push builds the exe on GitHub Actions. Pushing a tag such as `v1.0.0` crea
 - Drop-down Quake mode from the top of the screen, hide on click-away; tray icon, close to tray, start hidden at sign-in
 - Administrator window (UAC prompt, red title bar line)
 - Export / import settings
+- **Tools panel** (`Ctrl+Shift+U`): 30 popular open-source terminal tools (Starship, Oh My Posh, zoxide, fzf, PSFzf, lazygit, ripgrep, bat, eza, delta, Clink, Nerd Fonts…) with one-click install via winget, shell setup, and "Installed" status. Newly installed tools work in new tabs right away (PATH is re-read from Windows)
+- Smaller download: only English language files, no source maps or debug files
 
-Not done (ConPTY or xterm.js limits): inline images, horizontal scrolling, font ligatures, tmux control mode.
 
 Press **F1** for every shortcut, **Ctrl+Shift+P** for every command.
 
